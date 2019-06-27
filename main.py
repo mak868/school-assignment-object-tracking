@@ -8,7 +8,8 @@
 from tkinter import *
 from object_track import *
 import time
-#import serial
+import serial
+from PID_Controller import PID
 
 #start tikinter windo
 window = Tk()
@@ -16,17 +17,23 @@ window.title("Track Objects")
 
 #serial
 #ser = serial.Serial('COM3', 9600)
+arduino = serial.Serial('COM2', 9600)
+time.sleep(1)
+arduino.write("0\n".encode())
 
 #start video capter
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 time.sleep(2) #give the camera some time to warm up
 
 tracking_list = [] #list of all the trackted objects
 tracking_value= [] #list of all the values of the objects
 
 arduino_out = False
-
-
+pid = PID()
+pid.setKp(5)
+pid.setKi(5)
+pid.setKd(5)
+pid.setMaxValue(255)
 
 #add a new object that needs to be trackted
 def add_obj():
@@ -86,7 +93,13 @@ def arduino_output():
 	elif len(tracking_value) is 2:
 		list = (tracking_value[1], tracking_value[0])
 	
-	output = '|'.join(map(str, list))
+	#output = '|'.join(map(str, list))
+
+	pid.setTarget(list[0])
+	pid.process(list[1])
+	output = str(list[0]) + ", " + str(list[1]) + ", " + str(pid.getValue())
+	arduino.write((str(pid.getValue()) + "\n").encode())
+
 	print(output)
 	#ser.write(output)
 
