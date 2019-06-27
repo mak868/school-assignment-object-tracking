@@ -1,3 +1,4 @@
+import datetime
 
 class PID:
 
@@ -10,17 +11,18 @@ class PID:
         self.__target = 0
         self.__value = 0
         self.__maxValue = 1
+        self.__lastTime = datetime.datetime.now()
 
-    def setKp(self, newValue : int):
+    def setKp(self, newValue):
         self.__Kp = newValue
 
-    def setKi(self, newValue : int):
-        self.__Kp = newValue
+    def setKi(self, newValue):
+        self.__Ki = newValue
 
-    def setKd(self, newValue : int):
-        self.__Kp = newValue
+    def setKd(self, newValue):
+        self.__Kd = newValue
 
-    def setTarget(self, target : int):
+    def setTarget(self, target):
         self.__target = target
 
     def setMaxValue(self, newValue: int):
@@ -30,16 +32,29 @@ class PID:
         return self.__value
 
     def process(self, current : int):
+        now = datetime.datetime.now()
+        interval = now - self.__lastTime
+        dt = (interval.microseconds / 1000) / 1000 # bring to seconds
+
+        self.__lastTime = now
         error = self.__target - current
-        self.__sumError = self.__sumError + error
-        derivError = error - self.__lastError
+        self.__sumError = self.__sumError + (error * dt)   # *dt   #clipping
+
+        minSumError = 0
+        maxSumError = 100
+        self.__sumError = sorted((minSumError, maxSumError, self.__sumError))[1]
+
+
+        derivError = (error - self.__lastError) / dt      # /dt
         self.__lastError = error
 
         proportional = self.__Kp * error
         integral = self.__Ki * self.__sumError
         derivative = self.__Kd * derivError
 
-        pidValue = proportional + integral + derivative
+        pidValue = int(proportional + integral + derivative + 171)
+
+        #print("P: {} - I: {} - D: {} PID: {} - Target: {} - Current: {} - error: {}".format(proportional, integral, derivative, pidValue, self.__target, current, error))
 
         if (pidValue > self.__maxValue):
             self.__value = self.__maxValue

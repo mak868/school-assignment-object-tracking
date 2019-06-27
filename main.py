@@ -30,9 +30,10 @@ tracking_value= [] #list of all the values of the objects
 
 arduino_out = False
 pid = PID()
-pid.setKp(5)
-pid.setKi(5)
-pid.setKd(5)
+
+pid.setKp(6)
+pid.setKi(0.3)
+pid.setKd(4)
 pid.setMaxValue(255)
 
 #add a new object that needs to be trackted
@@ -83,6 +84,7 @@ def terminal_output():
 
 #output for the arduino
 def arduino_output():
+
 	# first where the ball needs to be
 	# second where the ball is
 	if len(tracking_value) is 0:
@@ -100,7 +102,7 @@ def arduino_output():
 	output = str(list[0]) + ", " + str(list[1]) + ", " + str(pid.getValue())
 	arduino.write((str(pid.getValue()) + "\n").encode())
 
-	print(output)
+	#print(output)
 	#ser.write(output)
 
 def arduino_loop():
