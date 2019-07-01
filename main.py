@@ -11,15 +11,21 @@ import time
 import serial
 from PID_Controller import PID
 
+#vars for ouputing to a display
+arduino_out = True  #out to the arduino
+data_display = False #send a data output
+
+
+p_center_obj_status = False #program center object
+p_folow_obj = False #program object folow
+p_game_mode = False #program game mode
+to_pong = 1 #direction of the ball going to the pong bat
+
 #start tikinter windo
 window = Tk()
 window.title("Track Objects") 
 
-#serial
-#ser = serial.Serial('COM3', 9600)
-arduino = serial.Serial('COM2', 9600)
-time.sleep(1)
-arduino.write("0\n".encode())
+
 
 #start video capter
 cap = cv2.VideoCapture(1)
@@ -28,13 +34,21 @@ time.sleep(2) #give the camera some time to warm up
 tracking_list = [] #list of all the trackted objects
 tracking_value= [] #list of all the values of the objects
 
-arduino_out = False
+
 pid = PID()
 
 pid.setKp(6)
 pid.setKi(0.3)
 pid.setKd(4)
 pid.setMaxValue(255)
+
+#serial
+if(arduino_out): #check if serial com is on or not
+	#ser = serial.Serial('COM3', 9600)
+	arduino = serial.Serial('COM2', 9600)
+	time.sleep(1)
+	arduino.write("0\n".encode())
+
 
 #add a new object that needs to be trackted
 def add_obj():
@@ -72,8 +86,9 @@ def loop_tack():
 	window.after(10, loop_tack) #loop this code every 10e of a second 
 	
 	#output for the arduino
-	if arduino_out is True:
-		arduino_output()
+	if data_display is True:
+		data_out()
+
 
 	
 #output for the terminal	
@@ -83,50 +98,156 @@ def terminal_output():
 	window.after(output_speed, terminal_output) #loop for output data
 
 #output for the arduino
-def arduino_output():
+def data_out():
 
 	# first where the ball needs to be
 	# second where the ball is
 	if len(tracking_value) is 0:
 		list = (0, 0)
 	elif len(tracking_value) is 1:	
-		list = (tracking_value[1], tracking_value[0])
+		list = (50, tracking_value[0])
 		
 	elif len(tracking_value) is 2:
 		list = (tracking_value[1], tracking_value[0])
 	
-	#output = '|'.join(map(str, list))
+	#check if game mode is on 
+	if p_game_mode:
+		list = mini_game()
 
-	pid.setTarget(list[0])
-	pid.process(list[1])
-	output = str(list[0]) + ", " + str(list[1]) + ", " + str(pid.getValue())
-	arduino.write((str(pid.getValue()) + "\n").encode())
 
-	#print(output)
-	#ser.write(output)
+	#check if arduino out is on or of
+	if arduino_out: #send data to the arduino
+		pid.setTarget(list[0])
+		pid.process(list[1])
+		output = str(list[0]) + ", " + str(list[1]) + ", " + str(pid.getValue())
+		arduino.write((str(pid.getValue()) + "\n").encode())
+	else: #send data to the serial out
+		output = '|'.join(map(str, list))
+		print(output)
 
-def arduino_loop():
-	global arduino_out
-	if arduino_out:
-		arduino_out = False
+
+def mini_game():
+	global to_pong
+
+	if len(tracking_value) is 3:
+		ball =  tracking_value[0]
+		pong_one =  tracking_value[1]
+		pong_two =  tracking_value[2]
+
+		#change ball direction
+		if abs(pong_one - ball) <= 5: #if ball is with in 5% of the pong chang the dir to pong two
+			to_pong = 2
+		elif abs(ball - pong_two) <= 5: #if ball is with in 5% of the pong chang the dir to pong one
+			to_pong = 1
+
+		if to_pong is 1:
+			return [ball, pong_one]
+		else:
+			return [ball,pong_two]
+
+		
+	
+
+'''
+center object 
+this program will center the trackted object
+'''
+def center_obj():
+	global p_center_obj_status
+	global data_display
+
+	if not p_center_obj_status:
+		add_obj()
+		data_display = True
+		cnt_track_button.configure(text="Close object center")
+		p_center_obj_status = True
 	else:
-		arduino_out = True
+		remove_obj()
+		data_display = False
+		p_center_obj_status = False
+		cnt_track_button.configure(text="object center")
+
+'''
+folow object
+this program will try to let the ball folow the second trackt object
+'''
+def folow_obj():
+	global p_folow_obj
+	global data_display
+
+	if not p_folow_obj:
+		add_obj()
+		add_obj()
+		data_display = True
+		p_folow_obj = True
+		folow_button.configure(text="Close object center")
+	else:
+		remove_obj()
+		remove_obj()
+		data_display = False
+		p_folow_obj = False
+		folow_button.configure(text="object center")	
+		
+
+'''
+Game mode is a litle pong game in 1D!.
+this game will send the ball between the pongs 
+all pongs are trackted objects
+'''
+def game_mode():
+	global p_game_mode
+	global data_display
+
+	if not p_game_mode:
+		add_obj()
+		add_obj()
+		add_obj()
+		data_display = True
+		p_game_mode = True
+		game_button.configure(text="Close Game")
+	else:
+		remove_obj()
+		remove_obj()
+		remove_obj()
+		data_display = False
+		p_game_mode = False
+		game_button.configure(text="Start game")	
+
 
 
 #start up the endless loop time scadule
 window.after(50, loop_tack) #loop for the camera color tracking
 
 
-#add buttons to wind
-bnt = Button(window, text="Add a extra tracked object", command=add_obj)
-bnt.grid(column=1, row=0)
-
-bnt = Button(window, text="Remove track object", command=remove_obj)
-bnt.grid(column=1, row=1)
 
 
-bnt = Button(window, text="set screen obj one to position obj two", command=arduino_loop)
-bnt.grid(column=1, row=2)
+#add button to window
+cnt_track_button = Button(window, text="object center", command=center_obj)
+cnt_track_button.grid(column=1, row=0)
+
+
+
+#controle the first obj with a second obj
+folow_button = Button(window, text="object folow", command=folow_obj)
+folow_button.grid(column=1, row=1)
+
+
+
+#play a litle game with 3 trackt obj's 
+game_button = Button(window, text="Start game", command=game_mode)
+game_button.grid(column=1, row=2)
+
+# advanced mode  
+if False:
+	#add buttons to wind
+	bnt = Button(window, text="Add a extra tracked object", command=add_obj)
+	bnt.grid(column=1, row=0)
+
+	bnt = Button(window, text="Remove track object", command=remove_obj)
+	bnt.grid(column=1, row=1)
+
+	bnt = Button(window, text="set screen obj one to position obj two", command=arduino_loop)
+	bnt.grid(column=1, row=2)
 
 
 
