@@ -13,13 +13,16 @@ from PID_Controller import PID
 
 #vars for ouputing to a display
 arduino_out = True  #out to the arduino
-data_display = False #send a data output
+data_display = True #send a data output
 
 
 p_center_obj_status = False #program center object
 p_folow_obj = False #program object folow
 p_game_mode = False #program game mode
 to_pong = 1 #direction of the ball going to the pong bat
+pid_value = {'p':5, 'i':0.7, 'd':15}
+
+
 
 #start tikinter windo
 window = Tk()
@@ -28,7 +31,7 @@ window.title("Track Objects")
 
 
 #start video capter
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 time.sleep(2) #give the camera some time to warm up
 
 tracking_list = [] #list of all the trackted objects
@@ -37,15 +40,17 @@ tracking_value= [] #list of all the values of the objects
 
 pid = PID()
 
-pid.setKp(6)
-pid.setKi(0.3)
-pid.setKd(4)
-pid.setMaxValue(255)
+pid.setKp(pid_value['p'])
+pid.setKi(pid_value['i']) #0.3
+pid.setKd(pid_value['d'])
+pid.setMaxValue(230)
+
+
 
 #serial
 if(arduino_out): #check if serial com is on or not
 	#ser = serial.Serial('COM3', 9600)
-	arduino = serial.Serial('COM2', 9600)
+	arduino = serial.Serial('COM12', 9600)
 	time.sleep(1)
 	arduino.write("0\n".encode())
 
@@ -83,7 +88,7 @@ def loop_tack():
 		obj.display()			
 		tracking_value[i]= obj.output()
 		i +=1
-	window.after(10, loop_tack) #loop this code every 10e of a second 
+	window.after(7, loop_tack) #loop this code every 10e of a second
 	
 	#output for the arduino
 	if data_display is True:
@@ -114,16 +119,21 @@ def data_out():
 	if p_game_mode:
 		list = mini_game()
 
+	#change pid values
+	pid.setKp(scale.get())
+	pid.setKi(scale2.get())  # 0.3
+	pid.setKd(scale3.get())
 
 	#check if arduino out is on or of
 	if arduino_out: #send data to the arduino
 		pid.setTarget(list[0])
 		pid.process(list[1])
-		output = str(list[0]) + ", " + str(list[1]) + ", " + str(pid.getValue())
+		#output = str(list[0]) + ", " + str(list[1]) + ", " + str(pid.getValue())
 		arduino.write((str(pid.getValue()) + "\n").encode())
+		print(pid.getValue())
 	else: #send data to the serial out
 		output = '|'.join(map(str, list))
-		print(output)
+		print(output , scale3.get())
 
 
 def mini_game():
@@ -214,6 +224,9 @@ def game_mode():
 		game_button.configure(text="Start game")	
 
 
+def pid_change():
+	print(pid_value['p'])
+
 
 #start up the endless loop time scadule
 window.after(50, loop_tack) #loop for the camera color tracking
@@ -237,6 +250,21 @@ folow_button.grid(column=1, row=1)
 game_button = Button(window, text="Start game", command=game_mode)
 game_button.grid(column=1, row=2)
 
+#scales for changing pid
+scale2 = Scale(window, tickinterval=5 , resolution=0.5, from_=0, to=10)
+scale2.grid(column=0, row=3)
+
+scale = Scale(window, tickinterval=0.2 , resolution=0.05, from_=0, to=1)
+scale.grid(column=1, row=3)
+
+scale3 = Scale(window,tickinterval=5 , resolution=0.5, from_=0, to=20)
+scale3.grid(column=2, row=3)
+
+#set the pre values
+scale.set(pid_value['p'])
+scale2.set(pid_value['i'])
+scale3.set(pid_value['d'])
+
 # advanced mode  
 if False:
 	#add buttons to wind
@@ -246,8 +274,9 @@ if False:
 	bnt = Button(window, text="Remove track object", command=remove_obj)
 	bnt.grid(column=1, row=1)
 
-	bnt = Button(window, text="set screen obj one to position obj two", command=arduino_loop)
+	bnt = Button(window, text="set screen obj one to position obj two", command=data_out)
 	bnt.grid(column=1, row=2)
+
 
 
 

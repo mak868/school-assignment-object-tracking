@@ -42,9 +42,9 @@ class track_obj:
 		self.hsv = cv2.cvtColor(blurred_frame, cv2.COLOR_BGR2HSV)
 	
 		#dialte and erode the frames
-		self.hsv = cv2.dilate(self.hsv, None, iterations=4)	
-		self.hsv = cv2.erode(self.hsv, None, iterations=4)
-	
+		self.hsv = cv2.dilate(self.hsv, None, iterations=4)
+		self.hsv = cv2.erode(self.hsv, None, iterations=2)
+
 		# maks the image
 		mask = cv2.inRange(self.hsv, self.lower, self.upper)		
 		contours,h = cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_NONE)
@@ -94,7 +94,7 @@ class track_obj:
 		if event == 4: #right mouse button
 			hsv_color = self.hsv[y , x]
 			self.color = self.frame[y , x]
-			self.lower = (hsv_color - np.array([4,100,30])).clip(0,255)
+			self.lower = (hsv_color - np.array([4,50,30])).clip(0,255)
 			self.upper = (hsv_color + np.array([4,255,255])).clip(0,255)
 		#change the screen type
 		if event == 5: #left mouse button
