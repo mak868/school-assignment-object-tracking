@@ -13,14 +13,14 @@ from PID_Controller import PID
 
 #vars for ouputing to a display
 arduino_out = True  #out to the arduino
-data_display = True #send a data output
+data_display = False #send a data output
 
 
 p_center_obj_status = False #program center object
 p_folow_obj = False #program object folow
 p_game_mode = False #program game mode
 to_pong = 1 #direction of the ball going to the pong bat
-pid_value = {'p':5, 'i':0.7, 'd':15}
+pid_value = {'p':2.0, 'i':0.3, 'd':1.0}
 
 
 
@@ -31,7 +31,7 @@ window.title("Track Objects")
 
 
 #start video capter
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 time.sleep(2) #give the camera some time to warm up
 
 tracking_list = [] #list of all the trackted objects
@@ -50,7 +50,7 @@ pid.setMaxValue(230)
 #serial
 if(arduino_out): #check if serial com is on or not
 	#ser = serial.Serial('COM3', 9600)
-	arduino = serial.Serial('COM12', 9600)
+	arduino = serial.Serial('COM3', 9600)
 	time.sleep(1)
 	arduino.write("0\n".encode())
 
@@ -88,7 +88,7 @@ def loop_tack():
 		obj.display()			
 		tracking_value[i]= obj.output()
 		i +=1
-	window.after(7, loop_tack) #loop this code every 10e of a second
+	window.after(10, loop_tack) #loop this code every 10e of a second
 	
 	#output for the arduino
 	if data_display is True:
@@ -129,8 +129,9 @@ def data_out():
 		pid.setTarget(list[0])
 		pid.process(list[1])
 		#output = str(list[0]) + ", " + str(list[1]) + ", " + str(pid.getValue())
-		arduino.write((str(pid.getValue()) + "\n").encode())
-		print(pid.getValue())
+		sendvalue = str(pid.getValue()) + '|' + str(tracking_value[0])
+		arduino.write((sendvalue + "\n").encode())
+		#print(pid.getValue())
 	else: #send data to the serial out
 		output = '|'.join(map(str, list))
 		print(output , scale3.get())

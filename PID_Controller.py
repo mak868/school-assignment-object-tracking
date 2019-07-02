@@ -40,8 +40,8 @@ class PID:
         error = self.__target - current
         self.__sumError = self.__sumError + (error * dt)   # *dt   #clipping
 
-        minSumError = -50
-        maxSumError = 50
+        minSumError = -70
+        maxSumError = 70
         self.__sumError = sorted((minSumError, maxSumError, self.__sumError))[1]
 
 
@@ -52,7 +52,7 @@ class PID:
         integral = self.__Ki * self.__sumError
         derivative = self.__Kd * derivError
 
-        pidValue = int(proportional + integral + derivative + 50)
+        pidValue = int(proportional + integral + derivative)
 
         #print("P: {} - I: {} - D: {} PID: {} - Target: {} - Current: {} - error: {}".format(proportional, integral, derivative, pidValue, self.__target, current, error))
 
